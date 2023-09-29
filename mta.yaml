@@ -23,6 +23,7 @@ modules:
           srv-url: ${default-url}
     requires:
       - name: my_hana_app_001-db
+      - name: my_hana_app_001-auth
 
   - name: my_hana_app_001-db-deployer
     type: hdb
@@ -32,9 +33,34 @@ modules:
     requires:
       - name: my_hana_app_001-db
 
+  - name: my_hana_app_001
+    type: approuter.nodejs
+    path: app/router
+    parameters:
+      keep-existing-routes: true
+      disk-quota: 256M
+      memory: 256M
+    requires:
+      - name: srv-api
+        group: destinations
+        properties:
+          name: srv-api # must be used in xs-app.json as well
+          url: ~{srv-url}
+          forwardAuthToken: true
+      - name: my_hana_app_001-auth
+
 resources:
   - name: my_hana_app_001-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
       service-plan: hdi-shared
+  - name: my_hana_app_001-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: my_hana_app_001-${org}-${space}
+        tenant-mode: dedicated
